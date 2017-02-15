@@ -21,8 +21,8 @@ public class Reclamo implements Serializable{
     }
 
     public Reclamo(Double lat,Double lng, String titulo, String telefono, String email) {
-        this.latitud=lat;
-        this.longitud=lng;
+        this.latitud = lat;
+        this.longitud = lng;
         this.titulo = titulo;
         this.telefono = telefono;
         this.email = email;

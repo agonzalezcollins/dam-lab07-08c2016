@@ -26,4 +26,7 @@
             android:value="@integer/google_play_services_version" />
     </application>
 
-</manifest>
+    <!-- Permisos -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+
+    </manifest>

@@ -3,8 +3,11 @@ package com.agustin.lab07_08c2016;
 import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -13,23 +16,30 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.EditText;
 import android.widget.Toast;
+import android.Manifest;
 
 import com.google.android.gms.appindexing.Action;
 import com.google.android.gms.appindexing.AppIndex;
 import com.google.android.gms.appindexing.Thing;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.GoogleMap.OnMapLongClickListener;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class ReclamoActivity extends AppCompatActivity implements OnMapReadyCallback {
+public class ReclamoActivity extends AppCompatActivity implements OnMapReadyCallback, OnMapLongClickListener {
 
     private GoogleMap myMap;
     private static final Integer CODIGO_RESULTADO_ALTA_RECLAMO = 999;
     private List<Reclamo> reclamos;
+
+    private static final int MY_PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 1;
     /**
      * ATTENTION: This was auto-generated to implement the App Indexing API.
      * See https://g.co/AppIndexing/AndroidStudio for more information.
@@ -40,26 +50,56 @@ public class ReclamoActivity extends AppCompatActivity implements OnMapReadyCall
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_reclamo);
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
+
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
         reclamos = new ArrayList<>();
         // ATTENTION: This was auto-generated to implement the App Indexing API.
         // See https://g.co/AppIndexing/AndroidStudio for more information.
         client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
+
     }
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
-        myMap = googleMap;
+        this.myMap = googleMap;
         iniciarMapa();
+    }
+
+    @Override
+    public void onMapLongClick (LatLng point){
+        Intent myIntent = new Intent(ReclamoActivity.this, AltaReclamoActivity.class);
+        myIntent.putExtra("coordenadas", point);
+        startActivityForResult(myIntent, ReclamoActivity.CODIGO_RESULTADO_ALTA_RECLAMO);
     }
 
     /**
      * IniciarMapa
      */
     private void iniciarMapa() {
-        // TODO: Completar Mapa
+        // Chequear Permisos
+        int permissionCheck = ContextCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION);
+
+        if(permissionCheck != PackageManager.PERMISSION_GRANTED){
+
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                    Manifest.permission.ACCESS_FINE_LOCATION)) {
+            }else {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{ Manifest.permission.ACCESS_FINE_LOCATION},
+                        ReclamoActivity.MY_PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION);
+
+            }
+        }
+
+        try {  // Habilitar Funciones
+            this.myMap.setMyLocationEnabled(true);
+            this.myMap.setOnMapLongClickListener(this);
+        }catch (SecurityException exception){
+            Toast.makeText(getApplicationContext(), "No posee permisos GPS", Toast.LENGTH_LONG).show();
+            Log.v("SecurityException", exception.getMessage());
+        }
     }
 
     /**
@@ -81,8 +121,16 @@ public class ReclamoActivity extends AppCompatActivity implements OnMapReadyCall
      */
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        // TODO: Completar onActivityResult
+        if (resultCode == RESULT_OK) {
+            Bundle extras = data.getExtras();
+            Reclamo nuevoReclamo = (Reclamo) extras.get("result");
+            this.reclamos.add(nuevoReclamo);
 
+            this.myMap.addMarker(new MarkerOptions().position(nuevoReclamo.coordenadaUbicacion())
+                    .title("Reclamo de "+nuevoReclamo.getEmail())
+                    .snippet(nuevoReclamo.getTitulo())
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)));
+        }
     }
 
     /**
@@ -111,6 +159,23 @@ public class ReclamoActivity extends AppCompatActivity implements OnMapReadyCall
     @Override
     public void onRequestPermissionsResult(int requestCode,
                                            String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case ReclamoActivity.MY_PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+                    iniciarMapa();
+
+                } else {
+                    Toast.makeText(this.getApplicationContext(), "Se requieren permisos GPS para funcionar", Toast.LENGTH_LONG).show();
+                }
+                return;
+            }
+
+            // other 'case' lines to check for other
+            // permissions this app might request
+        }
     }
 
     @Override
