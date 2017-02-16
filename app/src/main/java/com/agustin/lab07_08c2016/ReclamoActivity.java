@@ -5,6 +5,7 @@ import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.location.Location;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -42,6 +43,7 @@ public class ReclamoActivity extends AppCompatActivity implements OnMapReadyCall
     private GoogleMap myMap;
     private static final Integer CODIGO_RESULTADO_ALTA_RECLAMO = 999;
     private List<Reclamo> reclamos;
+    private Marker markerSeleccionado;
 
     private static final int MY_PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 1;
     /**
@@ -143,7 +145,8 @@ public class ReclamoActivity extends AppCompatActivity implements OnMapReadyCall
                 new GoogleMap.OnInfoWindowClickListener() {
                     @Override
                     public void onInfoWindowClick(Marker marker) {
-                        Log.v("Mark seleccionado",marker.getTitle());
+                        Log.v("Marker seleccionado",marker.getTitle());
+                        markerSeleccionado = marker;
                         mostrarDialogo();
                     }
 
@@ -163,7 +166,20 @@ public class ReclamoActivity extends AppCompatActivity implements OnMapReadyCall
      */
     private void buscarCercanos(Integer kmCerca) {
         // TODO: Completar BuscarCercanos
+        List<Reclamo> reclamosCercanos = new ArrayList<>();
         Toast.makeText(this, " Mostrar a " + kmCerca + " KMs", Toast.LENGTH_LONG).show();
+        LatLng puntoOrigen= (LatLng) this.markerSeleccionado.getPosition();
+        float[] distancia = new float[1];
+        for(Reclamo reclamo : this.reclamos){
+            LatLng puntoDestino= (LatLng) reclamo.coordenadaUbicacion();
+            //Metodo Estatico para calcular distancia, sino usar instanciaLocalizacion.distanceTo().
+            Location.distanceBetween(puntoOrigen.latitude, puntoOrigen.longitude, puntoDestino.latitude, puntoDestino.longitude, distancia);
+            Log.v("distancia",distancia.toString());
+            if(distancia[0] <= kmCerca.floatValue()){
+                reclamosCercanos.add(reclamo);
+            }
+        }
+        // Marcar reclamosCercanos
     }
 
     /**
@@ -214,8 +230,6 @@ public class ReclamoActivity extends AppCompatActivity implements OnMapReadyCall
         AlertDialog myAlertDialog = builder.create();
         myAlertDialog.show();
     }
-
-
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
