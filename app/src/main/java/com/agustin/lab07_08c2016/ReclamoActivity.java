@@ -1,15 +1,18 @@
 package com.agustin.lab07_08c2016;
 
+import android.annotation.TargetApi;
 import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.view.ContextThemeWrapper;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -28,6 +31,7 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.util.ArrayList;
@@ -58,12 +62,67 @@ public class ReclamoActivity extends AppCompatActivity implements OnMapReadyCall
         // See https://g.co/AppIndexing/AndroidStudio for more information.
         client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
 
+        this.askForLocationPermission();
+    }
+
+    private void askForLocationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) { // Permiso Dinamico
+            // Chequear Permisos
+            int permissionCheck = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION);
+
+            if (permissionCheck != PackageManager.PERMISSION_GRANTED) { //No tengo el permiso
+
+                if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
+                    //Explicar el Permiso
+                    AlertDialog.Builder builder = new AlertDialog.Builder(new ContextThemeWrapper(ReclamoActivity.this,R.style.myDialog));
+                    builder.setTitle("Permisos de Localizacion!");
+                    builder.setPositiveButton(android.R.string.ok, null);
+                    builder.setMessage("Puedo acceder al permiso de localizacion?");
+                    builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
+                        @TargetApi(Build.VERSION_CODES.M)
+                        @Override
+                        public void onDismiss(DialogInterface dialog) {
+                            ActivityCompat.requestPermissions(ReclamoActivity.this,
+                                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                                    ReclamoActivity.MY_PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION);
+                        }
+                    });
+                    builder.show();
+
+                } else { // Si no puedo pedir el permiso
+                    ActivityCompat.requestPermissions(ReclamoActivity.this,
+                            new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                            ReclamoActivity.MY_PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION);
+                }
+            }
+            // Tengo el permiso
+        }
+        // Permiso Estatico no se puede cambiar.
     }
 
     @Override
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults){
+        switch (requestCode) {
+            case ReclamoActivity.MY_PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    if (myMap != null){
+                        iniciarMapa();
+                    }
+                } else {
+                    // No tengo el permiso
+                    Toast.makeText(this.getApplicationContext(), "Se requieren permisos GPS para funcionar", Toast.LENGTH_LONG).show();
+                    finish();
+                }
+                return;
+            }
+            // Otros permisos (case)
+        }
+    }
+    @Override
     public void onMapReady(GoogleMap googleMap) {
         this.myMap = googleMap;
-        iniciarMapa();
+        this.iniciarMapa();
     }
 
     @Override
@@ -77,27 +136,22 @@ public class ReclamoActivity extends AppCompatActivity implements OnMapReadyCall
      * IniciarMapa
      */
     private void iniciarMapa() {
-        // Chequear Permisos
-        int permissionCheck = ContextCompat.checkSelfPermission(this,
-                Manifest.permission.ACCESS_FINE_LOCATION);
-
-        if(permissionCheck != PackageManager.PERMISSION_GRANTED){
-
-            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
-                    Manifest.permission.ACCESS_FINE_LOCATION)) {
-            }else {
-                ActivityCompat.requestPermissions(this,
-                        new String[]{ Manifest.permission.ACCESS_FINE_LOCATION},
-                        ReclamoActivity.MY_PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION);
-
-            }
-        }
-
         try {  // Habilitar Funciones
             this.myMap.setMyLocationEnabled(true);
             this.myMap.setOnMapLongClickListener(this);
+            this.myMap.setOnInfoWindowClickListener(
+                new GoogleMap.OnInfoWindowClickListener() {
+                    @Override
+                    public void onInfoWindowClick(Marker marker) {
+                        Log.v("Mark seleccionado",marker.getTitle());
+                        mostrarDialogo();
+                    }
+
+                }
+            );
+
         }catch (SecurityException exception){
-            Toast.makeText(getApplicationContext(), "No posee permisos GPS", Toast.LENGTH_LONG).show();
+            Toast.makeText(getApplicationContext(), "No posee permisos GPS", Toast.LENGTH_SHORT).show();
             Log.v("SecurityException", exception.getMessage());
         }
     }
@@ -145,38 +199,23 @@ public class ReclamoActivity extends AppCompatActivity implements OnMapReadyCall
         builder.setPositiveButton("Buscar reclamos", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int id) {
-                Dialog d = (Dialog) dialog;
-                EditText et = (EditText) d.findViewById(R.id.distanciaReclamo);
-                Log.d(":::Reclamo", "Reclamos a distancia...." + et.getText().toString());
-                // USAR EL DATO e invocar a buscarCercanos
-                //  buscarCercanos(Integer.parseInt(et.getText().toString()));
+                Dialog myDialog = (Dialog) dialog;
+                EditText myEditText = (EditText) myDialog.findViewById(R.id.distanciaReclamo);
+                try{
+                    Integer respuesta = Integer.parseInt(myEditText.getText().toString());
+                    Log.d(":::Reclamo", "Reclamos a distancia...." + respuesta);
+                    buscarCercanos(respuesta);
+                }catch (NumberFormatException exception){
+                    Toast.makeText(ReclamoActivity.this, "Ingresar un numero", Toast.LENGTH_SHORT).show();
+                    Log.v("NumberFormatException",exception.getMessage());
+                }
             }
         });
-        AlertDialog ad = builder.create();
-        ad.show();
+        AlertDialog myAlertDialog = builder.create();
+        myAlertDialog.show();
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode,
-                                           String permissions[], int[] grantResults) {
-        switch (requestCode) {
-            case ReclamoActivity.MY_PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION: {
-                // If request is cancelled, the result arrays are empty.
-                if (grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
 
-                    iniciarMapa();
-
-                } else {
-                    Toast.makeText(this.getApplicationContext(), "Se requieren permisos GPS para funcionar", Toast.LENGTH_LONG).show();
-                }
-                return;
-            }
-
-            // other 'case' lines to check for other
-            // permissions this app might request
-        }
-    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
