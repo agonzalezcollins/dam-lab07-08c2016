@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/activity_alta_reclamo"
     android:orientation="vertical"
@@ -51,6 +52,18 @@
         android:inputType="textEmailAddress"
         android:ems="10"
         android:id="@+id/reclamoMail" />
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="150dp"
+        android:id="@+id/imageViewFoto" />
+
+    <Button
+        android:text="Agregar Foto"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/btnImagen" />
+
     <LinearLayout
         android:orientation="horizontal"
         android:layout_width="match_parent"
